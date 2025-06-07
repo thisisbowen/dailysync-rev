@@ -38,7 +38,7 @@ git clone https://gitlab.com/gooin/dailysync.git
 
 ### 修改docker-compsoe.yml 文件
 
-可以通过修改文件中的`command`参数决定每次执行的功能，默认是国际区同步到国区
+可以通过修改文件中的`command`参数决定每次执行的功能，默认是国区同步到国际区
 
 ```shell
 yarn sync_cn
