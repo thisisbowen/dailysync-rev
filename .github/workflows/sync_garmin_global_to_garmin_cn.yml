@@ -7,7 +7,8 @@ on:
     - cron: "0 */6 * * *"
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
   # please change to your own config.
   RQ_COOKIE: ${{ secrets.RQ_COOKIE }}
   RQ_CSRF_TOKEN: ${{ secrets.RQ_CSRF_TOKEN }}
