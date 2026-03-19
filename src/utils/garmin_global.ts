@@ -50,7 +50,15 @@ export const getGaminGlobalClient = async (): Promise<GarminClientType> => {
             }
 
         }
-        const userInfo = await GCClient.getUserProfile();
+        let userInfo;
+        try {
+            userInfo = await GCClient.getUserProfile();
+        } catch (e) {
+            console.log('Warn: token refresh failed, renewing GarminGlobal session by password..');
+            await GCClient.login(GARMIN_GLOBAL_USERNAME, GARMIN_GLOBAL_PASSWORD);
+            await updateSessionToDB('GLOBAL', GCClient.exportToken());
+            userInfo = await GCClient.getUserProfile();
+        }
         const { fullName, userName: emailAddress, location } = userInfo;
         if (!emailAddress) {
             throw Error('佳明国际区登录失败，请检查填入的账号密码或您的网络环境')

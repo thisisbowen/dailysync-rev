@@ -54,7 +54,15 @@ export const getGaminCNClient = async (): Promise<GarminClientType> => {
 
         }
 
-        const userInfo = await GCClient.getUserProfile();
+        let userInfo;
+        try {
+            userInfo = await GCClient.getUserProfile();
+        } catch (e) {
+            console.log('Warn: token refresh failed, renewing GarminCN session by password..');
+            await GCClient.login(GARMIN_USERNAME, GARMIN_PASSWORD);
+            await updateSessionToDB('CN', GCClient.exportToken());
+            userInfo = await GCClient.getUserProfile();
+        }
         const { fullName, userName: emailAddress, location } = userInfo;
         if (!fullName) {
             throw Error('佳明中国区登录失败')
