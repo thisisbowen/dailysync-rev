@@ -10,6 +10,7 @@ on:
       - main
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # please change to your own config.
   RQ_COOKIE: ${{ secrets.RQ_COOKIE }}
   RQ_CSRF_TOKEN: ${{ secrets.RQ_CSRF_TOKEN }}

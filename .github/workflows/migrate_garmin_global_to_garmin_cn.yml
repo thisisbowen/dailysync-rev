@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   BARK_KEY: ${{ secrets.BARK_KEY }}
   GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
   GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
