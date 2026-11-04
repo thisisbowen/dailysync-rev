@@ -38,19 +38,24 @@ function timestamp(activity: any): number {
     return millis;
 }
 
-function sameActivity(source: any, target: any): boolean {
+function sameIdentity(source: any, target: any): boolean {
     if (Math.abs(timestamp(source) - timestamp(target)) > 2000) return false;
     if (!Number.isFinite(Number(source.duration)) || !Number.isFinite(Number(target.duration))) return false;
     if (Math.abs(Number(source.duration) - Number(target.duration)) > 2) return false;
+    return source.activityType?.typeKey === target.activityType?.typeKey;
+}
+
+function sameActivity(source: any, target: any): boolean {
+    if (!sameIdentity(source, target)) return false;
     const sourceDistance = Number(source.distance || 0);
     const targetDistance = Number(target.distance || 0);
     return Math.abs(sourceDistance - targetDistance) <= Math.max(10, sourceDistance * 0.001);
 }
 
-function missingActivities(source: any[], target: any[]): any[] {
+function missingActivities(source: any[], target: any[], matcher = sameIdentity): any[] {
     const used = new Set<number>();
     return source.filter(activity => {
-        const index = target.findIndex((other, i) => !used.has(i) && sameActivity(activity, other));
+        const index = target.findIndex((other, i) => !used.has(i) && matcher(activity, other));
         if (index < 0) return true;
         used.add(index);
         return false;
@@ -68,8 +73,13 @@ async function main() {
     source.forEach(timestamp);
     target.forEach(timestamp);
     const missing = missingActivities(source, target).sort((a,b) => timestamp(a) - timestamp(b));
+    const differences = source.flatMap(activity => {
+        const other = target.find(item => sameIdentity(activity, item));
+        return other && !sameActivity(activity, other) ? [{sourceId:activity.activityId,
+            targetId:other.activityId, sourceDistance:activity.distance, targetDistance:other.distance}] : [];
+    });
     console.log(JSON.stringify({phase:'inventory', source:source.length, target:target.length,
-        matched:source.length-missing.length, missing:missing.length, dryRun}));
+        matched:source.length-missing.length, missing:missing.length, metadataDifferences:differences, dryRun}));
     if (dryRun || !missing.length) return;
     const batch = missing.slice(0, limit);
     for (let i=0; i<batch.length; i++) {
@@ -90,7 +100,7 @@ async function main() {
     for (let attempt=0; attempt<6; attempt++) {
         await pause(10000);
         target = await inventory(cnClient);
-        const batchMissing = missingActivities(batch, target);
+        const batchMissing = missingActivities(batch, target, sameActivity);
         if (!batchMissing.length) {
             const remaining = missingActivities(source, target).length;
             console.log(JSON.stringify({phase:'verified', source:source.length, target:target.length,
