@@ -34,8 +34,11 @@ jobs:
           node-version: "20"
           cache: "yarn"
       - run: yarn
-      - run: yarn sync_global
-        timeout-minutes: 5
+      - run: yarn ts-node src/reconcile_garmin_global_to_cn.ts
+        env:
+          RECONCILE_DRY_RUN: 'false'
+          RECONCILE_LIMIT: '50'
+        timeout-minutes: 10
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: Save Garmin Session
