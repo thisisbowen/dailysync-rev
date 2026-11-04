@@ -7,6 +7,10 @@ on:
         description: Audit both full activity inventories without uploading
         type: boolean
         default: true
+      repair_pairs:
+        description: Optional JSON pairs of source and target treadmill activity IDs to align
+        type: string
+        default: '[]'
       batch_limit:
         description: Maximum missing activities to upload in this run (1-500)
         type: string
@@ -22,6 +26,7 @@ env:
   GARMIN_GLOBAL_USERNAME: ${{ secrets.GARMIN_GLOBAL_USERNAME }}
   GARMIN_GLOBAL_PASSWORD: ${{ secrets.GARMIN_GLOBAL_PASSWORD }}
   RECONCILE_DRY_RUN: ${{ inputs.dry_run }}
+  RECONCILE_REPAIR_PAIRS: ${{ inputs.repair_pairs }}
   RECONCILE_LIMIT: ${{ inputs.batch_limit }}
 
 jobs:
