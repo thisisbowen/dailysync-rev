@@ -6,6 +6,10 @@ on:
     #  每6小时检查一次
     - cron: "0 */6 * * *"
 
+concurrency:
+  group: garmin-global-to-cn-reconciliation
+  cancel-in-progress: false
+
 env:
   # please change to your own config.
   # please change to your own config.
