@@ -84,17 +84,21 @@ async function main() {
     const batch = missing.slice(0, limit);
     for (let i=0; i<batch.length; i++) {
         const path = await downloadGarminActivity(batch[i].activityId, globalClient);
-        let response: any;
-        try {
-            response = await cnClient.uploadActivity(path);
-        } catch (_) {
-            throw new Error('Garmin upload failed at batch item ' + (i+1) + '; rerun reconciliation to retry only missing activities');
+        let accepted = false;
+        for (let attempt=1; attempt<=3; attempt++) {
+            try {
+                const response = await cnClient.uploadActivity(path);
+                const result = response && response.detailedImportResult;
+                if (!result || (result.failures && result.failures.length)) throw new Error('Import rejected');
+                accepted = true;
+                break;
+            } catch (error) {
+                const reason = error instanceof Error ? error.message.match(/HTTP Error \(\d+\)|timeout|ECONNRESET|ENOENT|Import rejected/i)?.[0] : null;
+                console.log('Upload attempt ' + attempt + ' failed for batch item ' + (i+1) + ': ' + (reason || 'request failure'));
+                if (attempt < 3) await pause(5000 * attempt);
+            }
         }
-        const result = response && response.detailedImportResult;
-        if (!result || (result.failures && result.failures.length)) {
-            throw new Error('Garmin did not accept batch item ' + (i+1));
-        }
-        console.log('Accepted FIT upload ' + (i+1) + '/' + batch.length);
+        console.log((accepted ? 'Accepted FIT upload ' : 'Unverified FIT upload ') + (i+1) + '/' + batch.length);
         await pause(2000);
     }
     for (let attempt=0; attempt<6; attempt++) {
