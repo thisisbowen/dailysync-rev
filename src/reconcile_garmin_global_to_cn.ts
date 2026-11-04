@@ -67,6 +67,29 @@ async function main() {
     const globalClient = await getGaminGlobalClient();
     const cnClient = await getGaminCNClient();
     if (!globalClient || !cnClient) throw new Error('Garmin authentication failed');
+    for (const client of [globalClient, cnClient]) {
+        client.client.client.defaults.timeout = 60000;
+        client.client.client.defaults.timeoutErrorMessage = 'Garmin request timed out after 60 seconds';
+    }
+    const repairPairs: number[][] = JSON.parse(process.env.RECONCILE_REPAIR_PAIRS || '[]');
+    if (!dryRun) for (const [sourceId, targetId] of repairPairs) {
+        const original = await globalClient.getActivity({activityId:sourceId});
+        const existing = await cnClient.getActivity({activityId:targetId});
+        const a = original.summaryDTO;
+        const b = existing.summaryDTO;
+        if (original.activityTypeDTO?.typeKey !== 'treadmill_running' ||
+            existing.activityTypeDTO?.typeKey !== 'treadmill_running' ||
+            Math.abs(timestamp(a) - timestamp(b)) > 60000 ||
+            Math.abs(a.duration - b.duration) > 2 || !(a.distance > 0)) {
+            throw new Error('Historical repair pair did not pass identity checks');
+        }
+        await cnClient.client.put(cnClient.url.ACTIVITY + targetId, {activityId:targetId,
+            summaryDTO:{distance:a.distance,duration:a.duration,startTimeGMT:a.startTimeGMT,startTimeLocal:a.startTimeLocal}});
+        const verified = await cnClient.getActivity({activityId:targetId});
+        if (Math.abs(verified.summaryDTO.distance-a.distance)>0.01 ||
+            timestamp(verified.summaryDTO)!==timestamp(a)) throw new Error('Historical metadata repair did not verify');
+        console.log('Verified historical treadmill metadata repair');
+    }
     const source = await inventory(globalClient);
     let target = await inventory(cnClient);
     // Validate all timestamps before any uploads.
@@ -83,10 +106,10 @@ async function main() {
     if (dryRun || !missing.length) return;
     const batch = missing.slice(0, limit);
     for (let i=0; i<batch.length; i++) {
-        const path = await downloadGarminActivity(batch[i].activityId, globalClient);
         let accepted = false;
         for (let attempt=1; attempt<=3; attempt++) {
             try {
+                const path = await downloadGarminActivity(batch[i].activityId, globalClient);
                 const response = await cnClient.uploadActivity(path);
                 const result = response && response.detailedImportResult;
                 if (!result || (result.failures && result.failures.length)) throw new Error('Import rejected');
