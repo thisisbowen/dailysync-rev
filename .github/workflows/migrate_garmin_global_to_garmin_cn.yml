@@ -2,30 +2,40 @@ name: Migrate Garmin Global to Garmin CN
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Audit both full activity inventories without uploading
+        type: boolean
+        default: true
+      batch_limit:
+        description: Maximum missing activities to upload in this run (1-500)
+        type: string
+        default: '50'
+
+concurrency:
+  group: garmin-global-to-cn-reconciliation
+  cancel-in-progress: false
 
 env:
-  BARK_KEY: ${{ secrets.BARK_KEY }}
   GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
   GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
   GARMIN_GLOBAL_USERNAME: ${{ secrets.GARMIN_GLOBAL_USERNAME }}
   GARMIN_GLOBAL_PASSWORD: ${{ secrets.GARMIN_GLOBAL_PASSWORD }}
-  GARMIN_MIGRATE_NUM: ${{ secrets.GARMIN_MIGRATE_NUM }}
-  GARMIN_MIGRATE_START: ${{ secrets.GARMIN_MIGRATE_START }}
+  RECONCILE_DRY_RUN: ${{ inputs.dry_run }}
+  RECONCILE_LIMIT: ${{ inputs.batch_limit }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     name: Migrate Garmin Global to Garmin CN
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'yarn'
-      - run: yarn
-      - run: yarn migrate_garmin_global_to_cn
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Save Garmin Session
+      - run: yarn --frozen-lockfile
+      - run: yarn ts-node src/reconcile_garmin_global_to_cn.ts
